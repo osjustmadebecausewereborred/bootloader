@@ -210,14 +210,14 @@ read_disk_geometry:
 		stc
 		ret
 
-loading_msg	db "Loading kernel...", 0xD, 0xA, 0x0
-booting_msg	db "Booting kernel...", 0xD, 0xA, 0x0
-error_msg	db "Error. Sorry, cannot continue.", 0xD, 0xA, 0x0
-geometry_msg db "Disk geometry read.", 0xD, 0xA, 0x0
+loading_msg		db "Loading kernel...", 0xD, 0xA, 0x0
+booting_msg		db "Booting kernel...", 0xD, 0xA, 0x0
+error_msg		db "Error. Sorry, cannot continue.", 0xD, 0xA, 0x0
+geometry_msg	db "Disk geometry read.", 0xD, 0xA, 0x0
 
-Cylinders 		equ 0x500
+Cylinders		equ 0x500
 Heads			equ Cylinders + 0x1
-SectorsPerTrack equ Heads + 0x1
+SectorsPerTrack	equ Heads + 0x1
 Drive			equ SectorsPerTrack + 0x1
 SectorsRead		equ Drive + 0x1
 DestSegment		equ SectorsRead + 0x2
