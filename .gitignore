@@ -1,1 +1,4 @@
-/vbr.bin
+/**/*.bin
+/**/*.img
+/a.out
+/mem.bin
