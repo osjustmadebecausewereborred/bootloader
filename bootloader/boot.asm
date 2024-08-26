@@ -1,18 +1,22 @@
 bits 16
-org 0x9000
+
+MemSegment equ 0x1000
+
+org 0x0
 
 _start:
-	; clear segment registers and set up stack
-	xor ax, ax
-	mov si, ax
-	mov di, ax
+	; clear segment registers
+	mov ax, MemSegment
 	mov es, ax
 	mov ds, ax
+	mov fs, ax
+	mov gs, ax
+	
+	; set up stack (0x0:0x9000)
+	xor ax, ax
 	mov ss, ax
-	mov bp, 0x600
-	mov sp, bp
-
-	mov ax, 69
+	mov sp, 0x9000
+	mov bp, sp
 
 	; print message indicating that we have loaded ourselves
 	mov si, stage2_msg

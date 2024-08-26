@@ -23,9 +23,9 @@ VolumeSerialNumber	equ Signature + 0x1 ;dd 0x0
 VolumeLabelString	equ VolumeSerialNumber + 0x4 ;times 11 db 0x0
 SystemIdentifier	equ VolumeLabelString + 0xa;times 8 db 0x0
 
-FirstFATSector: 			equ 0x8000
-FirstRootDirSector: 		equ FirstFATSector + 0x2
-FirstDataSector:			equ FirstRootDirSector + 0x2
+%define FirstFATSector		bp + 2
+%define FirstRootDirSector	bp + 4
+%define FirstDataSector		bp + 6
 
 load_fat:
 	call read_disk_geometry
@@ -122,10 +122,12 @@ find_file:
 		mov ax, [es:di]
 		ret
 
-; ax -> first cluster number
+; ax -> cluster number
 ; es:bx -> dst
-read_file:
-	mov [.backup], ax
+; cx <- next cluster
+read_cluster:
+	push ax
+	
 	; physicall cluster = logical - 2
 	sub ax, 2
 	xor cx, cx
@@ -155,10 +157,11 @@ read_file:
 
 	; multiply cluster number by 1.5 (16 * 1.5 = 12)
 	xor dx, dx
-	mov ax, [.backup]
+	pop ax
+	push ax
 	mov cx, 0x2
 	div cx
-	mov dx, [.backup]
+	pop dx
 	add ax, dx
 	; and add it to si to make it offset to new cluster value
 	add si, ax
@@ -179,6 +182,15 @@ read_file:
 	
 	.odd:
 	; now we have 12bit value
+
+	ret
+
+; ax -> first cluster number
+; es:bx -> dst
+read_file:
+	call read_cluster
+	jc error
+
 	; check if cluster is usuned
 	cmp cx, 0x0
 	je error
@@ -202,15 +214,14 @@ read_file:
 	jb read_file ; if not, read next cluster
 
 	ret
-	.backup equ 0x8300
 
 ; es:bx -> dst
 ; al -> n of sectors
 ; dx -> lba
 read_sectors:
-	mov [.al], al
+	push ax
 	call lba_to_chs
-	mov al, [.al]
+	pop ax
 	mov dl, [Drive]
 	and cl, 0x3f
 	mov ah, 0x2
@@ -220,7 +231,8 @@ read_sectors:
 
 ; dx -> lba
 lba_to_chs:
-	mov [.input], dx
+	; save lba
+	push dx
 
 	; C, temp = lba / (heads * spt)
 	xor dx, dx
@@ -230,9 +242,9 @@ lba_to_chs:
 	mul cx ; heads * spt
 	mov cx, ax
 	xor dx, dx
-	mov ax, [.input]
+	pop ax
 	div cx ; lba / (heads * spt)
-	mov [.c], ax
+	push ax
 
 	; H, S - 1 = temp / spt
 	mov ax, dx
@@ -241,13 +253,10 @@ lba_to_chs:
 	mov cl, [SectorsPerTrack]
 	div cx
 
-	mov cx, [.c]
+	pop cx
 	mov ch, cl
 	mov cl, dl
 	inc cl ; S = S - 1 + 1
 	mov dh, al
 
 	ret
-
-	.input equ 0x8100
-	.c equ 0x8102

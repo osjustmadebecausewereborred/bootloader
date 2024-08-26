@@ -30,8 +30,12 @@ nop
 times 62 - ($ - $$) db 0x0
 
 _start:
-	; clear direction flag
+	; clear direction flag and set up stack
 	cld
+	xor ax, ax
+	mov ss, ax
+	mov sp, 0x9000
+	mov bp, sp
 
 	call load_fat
 
@@ -40,12 +44,12 @@ _start:
 	mov si, filename
 	call find_file
 
-	xor bx, bx
+	mov bx, 0x1000
 	mov es, bx
-	mov bx, 0x9000
+	xor bx, bx
 	call read_file
 
-	jmp 0x9000
+	jmp 0x1000:0x0
 
 	jmp error
 
@@ -61,8 +65,8 @@ halt:
 
 error_msg		db "Err", 0x0
 
-times 498 - ($ - $$) db 0x0
+;times 498 - ($ - $$) db 0x0
 filename		db "BOOT    BIN", 0x0
 
-times 510 - ($ - $$) db 0x0
+;times 510 - ($ - $$) db 0x0
 dw 0xaa55
