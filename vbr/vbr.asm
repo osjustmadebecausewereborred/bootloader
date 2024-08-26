@@ -65,8 +65,8 @@ halt:
 
 error_msg		db "Err", 0x0
 
-;times 498 - ($ - $$) db 0x0
+times 498 - ($ - $$) db 0x0
 filename		db "BOOT    BIN", 0x0
 
-;times 510 - ($ - $$) db 0x0
+times 510 - ($ - $$) db 0x0
 dw 0xaa55
