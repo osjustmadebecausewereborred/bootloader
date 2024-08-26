@@ -34,6 +34,7 @@ _start:
 	cld
 	xor ax, ax
 	mov ss, ax
+	mov fs, ax
 	mov sp, 0x9000
 	mov bp, sp
 
@@ -49,6 +50,7 @@ _start:
 	xor bx, bx
 	call read_file
 
+	mov ax, es
 	jmp 0x1000:0x0
 
 	jmp error

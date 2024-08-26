@@ -23,9 +23,9 @@ VolumeSerialNumber	equ Signature + 0x1 ;dd 0x0
 VolumeLabelString	equ VolumeSerialNumber + 0x4 ;times 11 db 0x0
 SystemIdentifier	equ VolumeLabelString + 0xa;times 8 db 0x0
 
-%define FirstFATSector		bp + 2
-%define FirstRootDirSector	bp + 4
-%define FirstDataSector		bp + 6
+%define FirstFATSector		bp + 10
+%define FirstRootDirSector	bp + 12
+%define FirstDataSector		bp + 14
 
 load_fat:
 	call read_disk_geometry
@@ -38,18 +38,17 @@ load_fat:
 	mov dx, 0x0
 	mov al, 0x1
 	call read_sectors
-	jc error
 
 	; get offset of FAT table
 	; fat offset = n of reserved sectors
-	mov cx, [NOfReservedSectors]
+	mov cx, [fs:NOfReservedSectors]
 	mov [FirstFATSector], cx
 
 	; get offset of root directory
 	; root dir offset = fat offset + (n of sectors per fat table * n of fat tables)
-	mov ax, [NOfSectorsPerFAT]
+	mov ax, [fs:NOfSectorsPerFAT]
 	xor dx, dx
-	mov dl, [NOfFATs]
+	mov dl, [fs:NOfFATs]
 	; n of sectors * n of fats
 	mul dx
 	; += fat offset (is already stored in cx)
@@ -59,7 +58,7 @@ load_fat:
 	; get offset of first data sector
 	; first data sector = root dir offset + (n of root dir entries * 32 / sector size (assuming it's 512 bytes))
 	mov di, ax ; backup first root dir sector offset
-	mov ax, [NOfRootDirEntries]
+	mov ax, [fs:NOfRootDirEntries]
 	mov cx, 32
 	; n of root dir entries * 32
 	mul cx
@@ -76,7 +75,6 @@ load_fat:
 	mov bx, FATHeader
 	mov dx, 0x0
 	call read_sectors
-	jc error
 
 	ret
 
@@ -89,8 +87,8 @@ find_file:
 	mul cx
 
 	; set up es:di as address to first root directory entry (clear segment, mov fat header address to di and add offset from ax)
-	xor di, di
-	mov es, di
+	mov bx, fs
+	mov es, bx
 	mov di, FATHeader
 	add di, ax
 
@@ -113,17 +111,22 @@ find_file:
 		; restore filename's pointer to si
 		mov si, bx
 
+		; check if pointer overflows bootsector
+		cmp di, 0x7c00
+		jae error
+
 		; again do the same, until we find matching filename
 		jmp .loop
 	.ret:
 		; get offset to cluster number, di has been already incremented by 11 with repe cmpsb, so we need to add 15 to it (offset of cluster number is 26)
 		add di, 15
 		; store cluster number in ax by dereferencing es:di and return function
-		mov ax, [es:di]
+		mov ax, [fs:di]
 		ret
 
 ; ax -> cluster number
 ; es:bx -> dst
+; fs -> fat header segment
 ; cx <- next cluster
 read_cluster:
 	push ax
@@ -132,7 +135,7 @@ read_cluster:
 	sub ax, 2
 	xor cx, cx
 	; multiplicate by n of sectors per cluster
-	mov cl, [SectorsPerCluster]
+	mov cl, [fs:SectorsPerCluster]
 	mul cx
 	; add offset to first data sector
 	mov cx, [FirstDataSector]
@@ -140,18 +143,15 @@ read_cluster:
 
 	; read cluster from disk
 	mov dx, ax
-	mov al, [SectorsPerCluster]
+	mov al, [fs:SectorsPerCluster]
 	call read_sectors
-	jc error
 
 	; get offset to first fat table sector and multiply it by 512 (sector size)
 	mov ax, [FirstFATSector]
 	mov cx, 512
 	mul cx
 	
-	; set up ds:si as a pointer to new cluster value (add offset to fat header memory address)
-	xor si, si
-	mov ds, si
+	; set up fs:si as a pointer to new cluster value (add offset to fat header memory address)
 	mov si, FATHeader
 	add si, ax
 
@@ -167,7 +167,7 @@ read_cluster:
 	add si, ax
 
 	; get cluster value
-	mov cx, [ds:si]
+	mov cx, [fs:si]
 	
 	; check if this is even cluster
 	test dx, 0x1
@@ -186,10 +186,10 @@ read_cluster:
 	ret
 
 ; ax -> first cluster number
+; fs -> fat header segment
 ; es:bx -> dst
 read_file:
 	call read_cluster
-	jc error
 
 	; check if cluster is usuned
 	cmp cx, 0x0
@@ -201,7 +201,7 @@ read_file:
 	; add memory offset
 	; memory += sectors per cluster * sector size (assuming it's 512 bytes)
 	xor ax, ax
-	mov al, [SectorsPerCluster]
+	mov al, [fs:SectorsPerCluster]
 	mov dx, 512
 	; sectors per cluster * sector size
 	mul dx
@@ -219,17 +219,26 @@ read_file:
 ; al -> n of sectors
 ; dx -> lba
 read_sectors:
+	; same number of sectors to be read
 	push ax
+	; convert lba to chs
 	call lba_to_chs
+	; restore amount of sectors to be read
 	pop ax
-	mov dl, [Drive]
+	; get disk number
+	mov dl, [fs:Drive]
+	; sectors is a 6 bit value so we need to cut off first 2 bits
 	and cl, 0x3f
+	; ah=0x2 is bios read with chs addressing
 	mov ah, 0x2
+	; call bios
 	int 0x13
+	jc error
 	ret
 	.al equ 0x8200
 
 ; dx -> lba
+; fs -> fat header segment
 lba_to_chs:
 	; save lba
 	push dx

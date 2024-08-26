@@ -13,6 +13,7 @@ qemu: all
 	mkfs.fat -F12 -n "BOOTL" disk.img
 	mount -o loop disk.img /mnt
 	cp bootloader/boot.bin /mnt
+	cp bootloader/btconfig.cfg /mnt
 	umount /mnt
 	dd if=vbr/vbr.bin of=disk.img skip=62c seek=62c bs=1c count=450 conv=notrunc
 	# nasm -f bin -o qemu/config.bin qemu/config.asm

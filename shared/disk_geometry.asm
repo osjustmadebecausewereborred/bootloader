@@ -1,6 +1,12 @@
+Drive					equ 0x7f00
+
+%define Cylinders		bp + 4
+%define Heads			bp + 6
+%define SectorsPerTrack	bp + 8
+
 read_disk_geometry:
 	; backup drive number
-	mov [Drive], dl
+	mov [fs:Drive], dl
 
 	; call bios
 	xor bx, bx
@@ -22,8 +28,3 @@ read_disk_geometry:
 	mov [SectorsPerTrack], cl
 
 	ret
-
-Cylinders		equ 0x500
-Heads			equ Cylinders + 0x1
-SectorsPerTrack	equ Heads + 0x1
-Drive			equ SectorsPerTrack + 0x1

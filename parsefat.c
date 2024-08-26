@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <string.h>
 
-#define FILENAME "BOOT    BIN"
+#define FILENAME "BTCONFIGINI"
 
 char buffer[512 * 2880];
 struct __attribute__((__packed__)) BPB {
