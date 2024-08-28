@@ -1,21 +1,21 @@
 org 0x0
 
-%define MemSegment bp + 2
-
 _start:
-	; clear segment registers, ax will contain segment address
+	; set up segment registers
+	mov ax, 0x1000
 	mov es, ax
 	mov ds, ax
-	mov gs, ax
 
 	; set up stack (0x0:0x9000)
-	xor bx, bx
-	mov fs, bx
-	mov ss, bx
+	xor ax, ax
+	mov fs, ax
+	mov ss, ax
 	mov sp, 0x9000
-	mov bp, sp
-	; save memory segment just for SeCUrITy purpose
-	mov [MemSegment], ax
+	mov bp, ax
+
+	; enable unreal mode
+	jmp enable_unreal
+unreal:
 
 	; load fat table
 	mov si, reading_fat_msg
@@ -52,21 +52,26 @@ _start:
 	call parse_config
 
 	; if we're here, no jumps occured
+parsedconfig:
+; 	mov si, [MemSegment]
+; 	mov ds, si
 	mov si, parsed_msg
 	call print
 
-	jmp halt
+	jmp 0x1000:halt
 
 error:
-	mov si, [MemSegment]
-	mov ds, si
+	; mov si, [MemSegment]
+	; mov ds, si
 	mov si, error_msg
 	call print
+
 halt:
 	hlt
 	jmp halt
 
 %include "shared/print.asm"
+%include "bootloader/unreal.asm"
 %include "bootloader/fat_extended.asm"
 %include "bootloader/parse_config.asm"
 

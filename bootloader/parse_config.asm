@@ -70,21 +70,19 @@ config_file_read:
 	; get destination memory address
 	; first is segment, it is located just after filename (and it's length is 11 bytes)
 	add di, 11
-	mov bx, [gs:di]
-	; move it to es segment register
-	mov es, bx
-	; and get offset, again just after memory address
-	add di, 2
-	mov bx, [gs:di]
+	push edi
 	; read file
-	call read_file
+	mov edi, [gs:di]
+	call read_file_high
 	; restore segment register
+	pop edi
 	pop es
 
 	; and restore pointer to config entry
 	pop di
 	ret
 
+; TODO!!!
 ; gs:di -> pointer to configuration entry
 config_jump:
 	; print a message
@@ -93,15 +91,19 @@ config_jump:
 
 	; get segment and offset of the address to be jumped to
 	add di, 12
-	mov bx, [gs:di]
-	mov es, bx
-	add di, 2
-	mov bx, [gs:di]
-	
-	; ax, es and dx will contain segment, bx will contain offset
-	mov ax, es
+	mov edi, [gs:di]
+
+	; clear segment registers
+	xor ax, ax
+	mov es, ax
 	mov ds, ax
-	jmp [es:bx]
+	mov ss, ax
+	mov sp, ax
+	mov gs, ax
+	mov fs, ax
+
+	; JUMP
+	jmp [ds:edi]
 
 reading_msg				db "Reading file...", 0xA, 0xD, 0x0
 jumping_msg				db "Jumping...", 0xA, 0xD, 0x0
